@@ -20,6 +20,7 @@
 
 package fr.serres.enctool;
 
+import java.awt.event.FocusAdapter;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -154,7 +155,7 @@ public class Engine {
 	 * @param allConfidences
 	 *            Display all confidences.
 	 * @param pattern
-	 *            : Filename pattern.
+	 *            Filename pattern.
 	 * @param differentFrom
 	 *            Display only file with different encoding that differentFrom.
 	 * @return Report.
@@ -214,7 +215,7 @@ public class Engine {
 	}
 
 	/**
-	 * Convert a file text to other encoding.
+	 * Convert a text file to other encoding.
 	 * 
 	 * @param file
 	 *            File to convert.
@@ -222,159 +223,176 @@ public class Engine {
 	 *            Target encoding.
 	 * @param ouptputLocation
 	 *            Output location (optionnal).
+	 * @param inputEncoding
+	 *            Forced input encoding (optional).
 	 * @return Report.
 	 * @throws IOException
 	 *             In case of IO exception.
 	 */
 	public String convertEncoding(String file, String toEncoding,
-			String ouptputLocation) throws IOException {
+			String ouptputLocation, String inputEncoding) throws IOException {
 		StringBuilder result = new StringBuilder();
 		File inputFile = null;
 		if (file != null) {
 
-			// NEW ENCODING SUPPORTED ?
+			// NEW TARGET ENCODING SUPPORTED ?
 			if (Charset.isSupported(toEncoding)) {
 
-				inputFile = new File(file);
-				// READ / WRITE TESTS :
-				boolean canReadWriteFile = false;
-				//boolean canReadWriteParentDir = false;
-				boolean canReadWriteParentDir = true;
-				boolean canReadWriteOutputLocationDir = false;
-				if (ouptputLocation == null) {
-					// no necessary because output is same directory :
-					canReadWriteOutputLocationDir = true;
-					if (inputFile != null && inputFile.isFile()
-							&& inputFile.canRead() && inputFile.canWrite()) {
-						canReadWriteFile = true;
-//						File parent = inputFile.getParentFile();
-//						if (parent == null) {
-//							parent = new File(File.separator);
-//						}
-//						if (parent != null && parent.isDirectory()
-//								&& parent.canRead() && parent.canWrite()) {
-//							canReadWriteParentDir = true;
-//						}
-					}
-				} else {
-					// no necessary because output is different :
-					canReadWriteParentDir = true;
-					// test :
-					if (inputFile != null && inputFile.isFile()
-							&& inputFile.canRead()) {
-						canReadWriteFile = true;
-						File output = new File(ouptputLocation);
-						if (output != null && output.isDirectory()
-								&& output.canRead() && output.canWrite()) {
-							canReadWriteOutputLocationDir = true;
-						}
-					}
-				}
+				// INPUT ENCODING SUPPORTED ?
+				if (inputEncoding == null || Charset.isSupported(inputEncoding)) {
 
-				// CONVERT :
-
-				// init
-				BufferedInputStream inputStreamData = null;
-				Writer out = null;
-				Reader in = null;
-				File outFile = null;
-				try {
-
-					if (canReadWriteFile && canReadWriteParentDir
-							&& canReadWriteOutputLocationDir) {
-						// detect encoding
-						inputStreamData = this.inputStreamFromPath(file);
-						String encoding = this
-								.simpleDetectEncoding(inputStreamData);
-						if (inputStreamData != null) {
-							// close
-							inputStreamData.close();
-						}
-
-						// open a new stream on the source file to prevent use
-						// of mark method by ICU
-						inputStreamData = this.inputStreamFromPath(file);
-
-						// reader
-						in = new InputStreamReader(inputStreamData, encoding);
-
-						if (encoding != null) {
-							if (ouptputLocation == null) {
-								// new output file (tmp file)
-								outFile = new File(file + ".enctool");
-								// writer
-								out = new OutputStreamWriter(
-										new FileOutputStream(outFile),
-										toEncoding);
-							} else {
-								// new output file (tmp file)
-								outFile = new File(ouptputLocation
-										+ File.separator + inputFile.getName());
-
-								// writer
-								out = new OutputStreamWriter(
-										new FileOutputStream(outFile),
-										toEncoding);
-							}
-
-							// writting
-							int c;
-							while ((c = in.read()) != -1) {
-								out.write(c);
-							}
-							in.close();
-							out.close();
-
-							if (ouptputLocation == null) {
-								// delete source file
-								if (inputFile.delete()) {
-									// rename new file
-									if (!outFile.renameTo(new File(file))) {
-										result.append("ERROR : target file can not be renamed.");
-									} else {
-										result.append("Successful encoded from "
-												+ encoding
-												+ " to "
-												+ toEncoding);
-									}
-								} else {
-									result.append("ERROR : source file can not be deleted.");
-								}
-							} else {
-								result.append("Successful encoded from "
-										+ encoding + " to " + toEncoding);
-							}
-
-						} else {
-							result.append("ERROR : this file can not be converted (encoding can not be determined).");
+					inputFile = new File(file);
+					// READ / WRITE TESTS :
+					boolean canReadWriteFile = false;
+					// boolean canReadWriteParentDir = false;
+					boolean canReadWriteParentDir = true;
+					boolean canReadWriteOutputLocationDir = false;
+					if (ouptputLocation == null) {
+						// no necessary because output is same directory :
+						canReadWriteOutputLocationDir = true;
+						if (inputFile != null && inputFile.isFile()
+								&& inputFile.canRead() && inputFile.canWrite()) {
+							canReadWriteFile = true;
+							// File parent = inputFile.getParentFile();
+							// if (parent == null) {
+							// parent = new File(File.separator);
+							// }
+							// if (parent != null && parent.isDirectory()
+							// && parent.canRead() && parent.canWrite()) {
+							// canReadWriteParentDir = true;
+							// }
 						}
 					} else {
-						if (!canReadWriteFile) {
-							result.append("ERROR : this file can not be read and/or write.");
-						} else if (!canReadWriteParentDir) {
-							result.append("ERROR : parent directory can not be read and/or write.");
-						} else if (!canReadWriteOutputLocationDir) {
-							result.append("ERROR : output directory can not be read and/or write.");
+						// no necessary because output is different :
+						canReadWriteParentDir = true;
+						// test :
+						if (inputFile != null && inputFile.isFile()
+								&& inputFile.canRead()) {
+							canReadWriteFile = true;
+							File output = new File(ouptputLocation);
+							if (output != null && output.isDirectory()
+									&& output.canRead() && output.canWrite()) {
+								canReadWriteOutputLocationDir = true;
+							}
 						}
 					}
-				} catch (ArrayIndexOutOfBoundsException e) {
-					result.append("ERROR => this file can not be converted (binary file ?). ");
-					if (Enctool.DEBUG) {
-						e.printStackTrace();
-					}
-				} finally {
-					// close
-					if (inputStreamData != null) {
-						inputStreamData.close();
-					}
-					if (in != null) {
-						in.close();
-					}
-					if (out != null) {
-						out.close();
-					}
-				}
 
+					// CONVERT :
+
+					// init
+					BufferedInputStream inputStreamData = null;
+					Writer out = null;
+					Reader in = null;
+					File outFile = null;
+					try {
+
+						if (canReadWriteFile && canReadWriteParentDir
+								&& canReadWriteOutputLocationDir) {
+
+							String encoding = inputEncoding;
+							if (encoding == null) {
+								// detect encoding
+								inputStreamData = this
+										.inputStreamFromPath(file);
+								encoding = this
+										.simpleDetectEncoding(inputStreamData);
+								if (inputStreamData != null) {
+									// close
+									inputStreamData.close();
+								}
+							}
+
+							// open a new stream on the source file to prevent
+							// use
+							// of mark method by ICU
+							inputStreamData = this.inputStreamFromPath(file);
+
+							// reader
+							in = new InputStreamReader(inputStreamData,
+									encoding);
+
+							if (encoding != null) {
+								if (ouptputLocation == null) {
+									// new output file (tmp file)
+									outFile = new File(file + ".enctool");
+									// writer
+									out = new OutputStreamWriter(
+											new FileOutputStream(outFile),
+											toEncoding);
+								} else {
+									// new output file (tmp file)
+									outFile = new File(ouptputLocation
+											+ File.separator
+											+ inputFile.getName());
+
+									// writer
+									out = new OutputStreamWriter(
+											new FileOutputStream(outFile),
+											toEncoding);
+								}
+
+								// writting
+								int c;
+								while ((c = in.read()) != -1) {
+									out.write(c);
+								}
+								in.close();
+								out.close();
+
+								if (ouptputLocation == null) {
+									// delete source file
+									if (inputFile.delete()) {
+										// rename new file
+										if (!outFile.renameTo(new File(file))) {
+											result.append("ERROR : target file can not be renamed.");
+										} else {
+											result.append("Successful encoded from "
+													+ encoding
+													+ " to "
+													+ toEncoding);
+										}
+									} else {
+										result.append("ERROR : source file can not be deleted.");
+									}
+								} else {
+									result.append("Successful encoded from "
+											+ encoding + " to " + toEncoding);
+								}
+
+							} else {
+								result.append("ERROR : this file can not be converted (encoding can not be determined).");
+							}
+						} else {
+							if (!canReadWriteFile) {
+								result.append("ERROR : this file can not be read and/or write.");
+							} else if (!canReadWriteParentDir) {
+								result.append("ERROR : parent directory can not be read and/or write.");
+							} else if (!canReadWriteOutputLocationDir) {
+								result.append("ERROR : output directory can not be read and/or write.");
+							}
+						}
+					} catch (ArrayIndexOutOfBoundsException e) {
+						result.append("ERROR => this file can not be converted (binary file ?). ");
+						if (Enctool.DEBUG) {
+							e.printStackTrace();
+						}
+					} finally {
+						// close
+						if (inputStreamData != null) {
+							inputStreamData.close();
+						}
+						if (in != null) {
+							in.close();
+						}
+						if (out != null) {
+							out.close();
+						}
+					}
+
+				} else {
+					result.append("ERROR : input encoding \"" + inputEncoding
+							+ "\" is not supported. ");
+				}
 			} else {
 				result.append("ERROR : output encoding \"" + toEncoding
 						+ "\" is not supported. ");
@@ -383,9 +401,29 @@ public class Engine {
 		return result.toString();
 	}
 
+	/**
+	 * Convert text files recursively to other encoding.
+	 * 
+	 * @param dir
+	 *            Base directory for files search.
+	 * @param subDir
+	 *            Name of current sub directory. Used by recursively method
+	 *            call.
+	 * @param pattern
+	 *            Filename pattern.
+	 * @param toEncoding
+	 *            Target encoding.
+	 * @param ouptputLocation
+	 *            Output location (optionnal).
+	 * @param inputEncoding
+	 *            Forced input encoding (optional).
+	 * @return Report.
+	 * @throws IOException
+	 *             In case of IO exception.
+	 */
 	public String convertEncodingRecursive(String dir, String subDir,
-			String pattern, String toEncoding, String ouptputLocation)
-			throws IOException {
+			String pattern, String toEncoding, String ouptputLocation,
+			String inputEncoding) throws IOException {
 		StringBuilder result = new StringBuilder();
 		if (dir != null) {
 			// init pattern
@@ -397,81 +435,95 @@ public class Engine {
 			// NEW ENCODING SUPPORTED ?
 			if (Charset.isSupported(toEncoding)) {
 
-				File file = new File(dir);
-				if (file != null && file.isDirectory()) {
-					File[] currentFiles = file.listFiles();
-					for (File fileTmp : currentFiles) {
-						if (fileTmp.isFile()) {
-							// FILE
-							boolean fileTmpMatch = true;
-							if (p != null) {
-								// filename match pattern ?
-								Matcher matcher = p.matcher(fileTmp.getName());
-								if (!matcher.matches()) {
-									fileTmpMatch = false;
-								}
-							}
+				// INPUT ENCODING SUPPORTED ?
+				if (inputEncoding == null || Charset.isSupported(inputEncoding)) {
 
-							if (fileTmpMatch) {
-								// determine outpu location and do mkdirs if do
-								// not exist
-								StringBuilder outputLocationTmp = null;
-								if (ouptputLocation != null) {
-									outputLocationTmp = new StringBuilder(
-											ouptputLocation);
-									if (subDir != null) {
-										outputLocationTmp
-												.append(File.separator);
-										outputLocationTmp.append(subDir);
-										File fileOutputLocationTmp = new File(
-												outputLocationTmp.toString());
-										if (!fileOutputLocationTmp.exists()) {
-											if (!fileOutputLocationTmp.mkdirs()) {
-												if (Enctool.DEBUG) {
-													System.out
-															.println("ERROR when try to create output directory : "
-																	+ outputLocationTmp
-																			.toString());
+					File file = new File(dir);
+					if (file != null && file.isDirectory()) {
+						File[] currentFiles = file.listFiles();
+						for (File fileTmp : currentFiles) {
+							if (fileTmp.isFile()) {
+								// FILE
+								boolean fileTmpMatch = true;
+								if (p != null) {
+									// filename match pattern ?
+									Matcher matcher = p.matcher(fileTmp
+											.getName());
+									if (!matcher.matches()) {
+										fileTmpMatch = false;
+									}
+								}
+
+								if (fileTmpMatch) {
+									// determine output location and do mkdirs
+									// if do
+									// not exist
+									StringBuilder outputLocationTmp = null;
+									if (ouptputLocation != null) {
+										outputLocationTmp = new StringBuilder(
+												ouptputLocation);
+										if (subDir != null) {
+											outputLocationTmp
+													.append(File.separator);
+											outputLocationTmp.append(subDir);
+											File fileOutputLocationTmp = new File(
+													outputLocationTmp
+															.toString());
+											if (!fileOutputLocationTmp.exists()) {
+												if (!fileOutputLocationTmp
+														.mkdirs()) {
+													if (Enctool.DEBUG) {
+														System.out
+																.println("ERROR when try to create output directory : "
+																		+ outputLocationTmp
+																				.toString());
+													}
 												}
 											}
 										}
 									}
+
+									String outputLocationTmpString = null;
+									if (outputLocationTmp != null) {
+										outputLocationTmpString = outputLocationTmp
+												.toString();
+									}
+
+									String reportTmp = this.convertEncoding(
+											fileTmp.getAbsolutePath(),
+											toEncoding,
+											outputLocationTmpString,
+											inputEncoding);
+									result.append(fileTmp.getAbsolutePath());
+									result.append(" : ");
+									result.append(reportTmp);
+									result.append('\n');
 								}
-
-								String outputLocationTmpString = null;
-								if (outputLocationTmp != null) {
-									outputLocationTmpString = outputLocationTmp
-											.toString();
+							} else {
+								// DIRECTORY
+								// genrate new sub directory path
+								StringBuilder newSubDir = new StringBuilder();
+								if (subDir != null) {
+									newSubDir.append(subDir);
+									newSubDir.append(File.separator);
 								}
+								newSubDir.append(fileTmp.getName());
 
-								String reportTmp = this.convertEncoding(
-										fileTmp.getAbsolutePath(), toEncoding,
-										outputLocationTmpString);
-								result.append(fileTmp.getAbsolutePath());
-								result.append(" : ");
-								result.append(reportTmp);
-								result.append('\n');
+								// recursive call
+								result.append(this.convertEncodingRecursive(
+										fileTmp.getAbsolutePath(),
+										newSubDir.toString(), pattern,
+										toEncoding, ouptputLocation,
+										inputEncoding));
 							}
-						} else {
-							// DIRECTORY
-							// genrate new sub directory path
-							StringBuilder newSubDir = new StringBuilder();
-							if (subDir != null) {
-								newSubDir.append(subDir);
-								newSubDir.append(File.separator);
-							}
-							newSubDir.append(fileTmp.getName());
-
-							// recursive call
-							result.append(this.convertEncodingRecursive(
-									fileTmp.getAbsolutePath(),
-									newSubDir.toString(), pattern, toEncoding,
-									ouptputLocation));
 						}
+					} else {
+						result.append(dir + " : ERROR => It's not a directory.");
+						result.append('\n');
 					}
 				} else {
-					result.append(dir + " : ERROR => It's not a directory.");
-					result.append('\n');
+					result.append("ERROR : input encoding \"" + inputEncoding
+							+ "\" is not supported. ");
 				}
 			} else {
 				result.append("ERROR : output encoding \"" + toEncoding
