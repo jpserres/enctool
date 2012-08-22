@@ -18,7 +18,6 @@
  * 
  */
 
-
 package fr.serres.enctool;
 
 import java.io.FileNotFoundException;
@@ -47,6 +46,7 @@ public class Enctool {
 		String ouptputLocation = null;
 		String patternFilename = null;
 		String targetEncoding = null;
+		String inputEncoding = null;
 		String path = null;
 		boolean allConfidences = false;
 
@@ -56,6 +56,7 @@ public class Enctool {
 			boolean currentOptionIsChangeOutputLocation = false;
 			boolean currentOptionIsPatternFilename = false;
 			boolean currentOptionIsConvert = false;
+			boolean currentOptionIsForceInputEncoding = false;
 
 			for (int i = 0; i < args.length; i++) {
 
@@ -103,6 +104,14 @@ public class Enctool {
 						} else {
 							currentOptionIsConvert = true;
 							primaryOption = CLOptions.CONVERT_FILES_DIR;
+						}
+						break;
+					case FORCE_INPUT_ENCODING:
+						if (primaryOption == null
+								|| (primaryOption != CLOptions.CONVERT_FILE && primaryOption != CLOptions.CONVERT_FILES_DIR)) {
+							syntaxError = true;
+						} else {
+							currentOptionIsForceInputEncoding = true;
 						}
 						break;
 					case DISPLAY_ONLY_FILES_WITH_DIFFERENT_ENCODING:
@@ -161,6 +170,9 @@ public class Enctool {
 					} else if (currentOptionIsChangeOutputLocation) {
 						ouptputLocation = args[i];
 						currentOptionIsChangeOutputLocation = false;
+					} else if (currentOptionIsForceInputEncoding) {
+						inputEncoding = args[i];
+						currentOptionIsForceInputEncoding = false;
 					} else if (currentOptionIsPatternFilename) {
 						patternFilename = args[i];
 						currentOptionIsPatternFilename = false;
@@ -198,7 +210,7 @@ public class Enctool {
 		} else {
 			// execute
 			execute(primaryOption, path, differentFrom, ouptputLocation,
-					patternFilename, allConfidences, targetEncoding);
+					patternFilename, allConfidences, targetEncoding, inputEncoding);
 		}
 	}
 
@@ -221,24 +233,39 @@ public class Enctool {
 		man.append('\n');
 		man.append("DETECT MODS :");
 		man.append('\n');
-		man.append("-e :             DEFAULT option. Detects encoding of a text file.").append('\n');		
+		man.append(
+				"-e :             DEFAULT option. Detects encoding of a text file.")
+				.append('\n');
 		man.append("                 Display only encoding with the highest confidence.");
 		man.append('\n');
 		man.append('\n');
-		man.append("-E :             Detects encoding of a text file. ").append('\n');
-		man.append("                 Display the 3 firsts encodings that could match with a non-zero confidence ").append('\n');
-		man.append("                 and display the language (3 letters ISO code) when determinated. ").append('\n');
+		man.append("-E :             Detects encoding of a text file. ")
+				.append('\n');
+		man.append(
+				"                 Display the 3 firsts encodings that could match with a non-zero confidence ")
+				.append('\n');
+		man.append(
+				"                 and display the language (3 letters ISO code) when determinated. ")
+				.append('\n');
 		man.append("                 Use -a to display all.").append('\n');
 		man.append("                 Format : encoding,confidence[0-100],language");
 		man.append('\n');
 		man.append('\n');
-		man.append("-r :             Detects encoding of text files recursively in a directory. ").append('\n');
+		man.append(
+				"-r :             Detects encoding of text files recursively in a directory. ")
+				.append('\n');
 		man.append("                 Display only encoding with the highest confidence.");
 		man.append('\n');
 		man.append('\n');
-		man.append("-R :             Detects encoding of text files recursively in a directory. ").append('\n');
-		man.append("                 Display the 3 firsts encodings that could match with a non-zero confidence ").append('\n');
-		man.append("                 and display the language (3 letters ISO code) when determinated. ").append('\n');
+		man.append(
+				"-R :             Detects encoding of text files recursively in a directory. ")
+				.append('\n');
+		man.append(
+				"                 Display the 3 firsts encodings that could match with a non-zero confidence ")
+				.append('\n');
+		man.append(
+				"                 and display the language (3 letters ISO code) when determinated. ")
+				.append('\n');
 		man.append("                 Use -a to display all.");
 		man.append('\n');
 		man.append("                 Format : encoding,confidence[0-100],language");
@@ -246,7 +273,9 @@ public class Enctool {
 		man.append('\n');
 		man.append("DETECT OPTIONS :");
 		man.append('\n');
-		man.append("-d <encoding> :  Display only files with different encoding that <encoding>. ").append('\n');
+		man.append(
+				"-d <encoding> :  Display only files with different encoding that <encoding>. ")
+				.append('\n');
 		man.append("                 Work only with -r option.");
 		man.append('\n');
 		man.append('\n');
@@ -255,19 +284,30 @@ public class Enctool {
 		man.append('\n');
 		man.append("CONVERT MODS :");
 		man.append('\n');
-		man.append("-c <encoding> :  Detects encoding of a text file and convert it to <encoding>. ").append('\n');
+		man.append(
+				"-c <encoding> :  Detects encoding of a text file and convert it to <encoding>.")
+				.append('\n');
+		man.append("                 Use -f option to bypass encoding detection.");
 		man.append("                 WARNING : File is overwritten. Use -o to change output location.");
 		man.append('\n');
 		man.append('\n');
-		man.append("-cr <encoding> : Detects encoding of text files recursively in a directory ").append('\n');
-		man.append("                 and convert them to <encoding>. ").append('\n');
-		man.append("                 WARNING : Files are overwritten. ").append('\n');
+		man.append(
+				"-cr <encoding> : Detects encoding of text files recursively in a directory ")
+				.append('\n');
+		man.append("                 and convert them to <encoding>. ").append(
+				'\n');
+		man.append("                 WARNING : Files are overwritten. ")
+				.append('\n');
 		man.append("                 Use -o to change output location.");
 		man.append('\n');
 		man.append('\n');
 		man.append("CONVERT OPTIONS :");
 		man.append('\n');
 		man.append("-o <path> :      Change output location.");
+		man.append('\n');
+		man.append('\n');
+		man.append("-f <encoding> :  Force input encoding.").append('\n');
+		man.append("                 Work only with -c and -cr options.");
 		man.append('\n');
 		man.append('\n');
 		man.append("COMMONS OPTIONS :");
@@ -329,11 +369,13 @@ public class Enctool {
 	 *            Display all confidences.
 	 * @param targetEncoding
 	 *            Target encoding (convert function).
+	 * @param inputEncoding
+	 * 			  Forced input encoding.           
 	 */
 	private static void execute(CLOptions mod, String path,
 			String differentFrom, String ouptputLocation,
 			String patternFilename, boolean allConfidences,
-			String targetEncoding) {
+			String targetEncoding, String inputEncoding) {
 
 		if (mod != null) {
 			Engine engine = new Engine();
@@ -412,7 +454,7 @@ public class Enctool {
 			case CONVERT_FILE:
 				try {
 					System.out.println(engine.convertEncoding(path,
-							targetEncoding, ouptputLocation));
+							targetEncoding, ouptputLocation, inputEncoding));
 				} catch (FileNotFoundException e) {
 					System.out.println("ERROR => File not found : " + path);
 					if (DEBUG) {
@@ -431,7 +473,7 @@ public class Enctool {
 				try {
 					System.out.println(engine.convertEncodingRecursive(path,
 							null, patternFilename, targetEncoding,
-							ouptputLocation));
+							ouptputLocation, inputEncoding));
 				} catch (FileNotFoundException e) {
 					System.out
 							.println("ERROR => Directory not found : " + path);
