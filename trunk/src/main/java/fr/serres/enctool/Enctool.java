@@ -208,9 +208,9 @@ public class Enctool {
 	private static void showUsage() {
 		StringBuilder man = new StringBuilder("Usage :");
 		man.append('\n');
-		man.append("enctools [-e|-E|-c] [options] <file>");
+		man.append("enctool [-e|-E|-c] [options] <file>");
 		man.append('\n');
-		man.append("enctools [-r|-R|-cr] [options] <path>");
+		man.append("enctool [-r|-R|-cr] [options] <path>");
 		man.append('\n');
 		man.append('\n');
 		man.append("This tool allows to detect and convert text files encoding.");
