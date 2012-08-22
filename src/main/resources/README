@@ -5,6 +5,9 @@ Use ICU for encoding detection.
 
 Java 1.5 or later.
 
+Display man page : 
+	java -jar enctool.jar
+
 --- 
  
 Copyright 2012 Jean-Philippe Serres (enctool@serres.fr)
