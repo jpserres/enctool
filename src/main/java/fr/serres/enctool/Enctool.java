@@ -331,7 +331,7 @@ public class Enctool {
 	private static void showVersion() {
 		StringBuilder version = new StringBuilder(">> Enctool <<");
 		version.append('\n');
-		version.append("Version : 0.2");
+		version.append("Version : 0.3");
 		version.append('\n');
 		version.append("Year : 2012");
 		version.append('\n');
