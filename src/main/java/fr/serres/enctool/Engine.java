@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Jean-Philippe Serres
+ * Copyright 2012-2013 Jean-Philippe Serres
  * 
  *   This file is part of EncTool.
  *
@@ -20,8 +20,10 @@
 
 package fr.serres.enctool;
 
-import java.awt.event.FocusAdapter;
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -46,7 +48,18 @@ import com.ibm.icu.text.CharsetMatch;
  */
 public class Engine {
 
+	/**
+	 * BOM UTF-8
+	 * 
+	 */
+	private static final String UTF8_BOM = "\uFEFF";
+
 	private static final int MAX_CONFIDENCES = 3;
+
+	/**
+	 * Firt temporary charactere.
+	 */
+	private String firstCharTmp;
 
 	/**
 	 * Detect a file encoding.
@@ -86,6 +99,26 @@ public class Engine {
 						CharsetMatch match = detector.detect();
 						result.append(this.generateReport(match, advanced,
 								differentFrom));
+
+						// TODO begin add BOM detecting fo UTF-8 files ?
+						if ("UTF-8".equals(match.getName())) {
+							InputStreamReader reader = new InputStreamReader(
+									streamData, match.getName());
+							BufferedReader breader = new BufferedReader(reader);
+							if (this.isBOMUTF8Present(breader)) {
+								// BOM is present
+								result.append(" (");
+								result.append("with BOM");
+								result.append(")");
+							} else {
+								// BOM is not present
+								result.append(" (");
+								result.append("without BOM");
+								result.append(")");
+							}
+						}
+						// TODO end
+
 					} catch (ArrayIndexOutOfBoundsException e) {
 						result.append("ERROR => Binary file ? ");
 						if (Enctool.DEBUG) {
@@ -230,7 +263,8 @@ public class Engine {
 	 *             In case of IO exception.
 	 */
 	public String convertEncoding(String file, String toEncoding,
-			String ouptputLocation, String inputEncoding) throws IOException {
+			String ouptputLocation, String inputEncoding, Boolean utf8BOM)
+			throws IOException {
 		StringBuilder result = new StringBuilder();
 		File inputFile = null;
 		if (file != null) {
@@ -283,6 +317,7 @@ public class Engine {
 					BufferedInputStream inputStreamData = null;
 					Writer out = null;
 					Reader in = null;
+					BufferedReader breader = null;
 					File outFile = null;
 					try {
 
@@ -310,6 +345,7 @@ public class Engine {
 							// reader
 							in = new InputStreamReader(inputStreamData,
 									encoding);
+							breader = new BufferedReader(in);
 
 							if (encoding != null) {
 								if (ouptputLocation == null) {
@@ -331,11 +367,35 @@ public class Engine {
 											toEncoding);
 								}
 
-								// writting
+								if (encoding == "UTF-8" && utf8BOM != null) {
+									// detect utf8 BOM
+									if (isBOMUTF8Present(breader)) {
+										if (!utf8BOM) {
+											// no writting BOM (isBOMUTF8Present
+											// function write the BOM in
+											// firstCharTmp variable)
+											this.firstCharTmp = null;
+										}
+									} else {
+										if (utf8BOM) {
+											// add BOM
+											addBOM(out);
+										}
+									}
+								}
+
+								// first : writtinf first charactere is present
+								if (this.firstCharTmp != null) {
+									out.write(this.firstCharTmp);
+									this.firstCharTmp = null;
+								}
+								// then : writting other lines from reader
 								int c;
-								while ((c = in.read()) != -1) {
+								while ((c = breader.read()) != -1) {
 									out.write(c);
 								}
+
+								breader.close();
 								in.close();
 								out.close();
 
@@ -346,20 +406,45 @@ public class Engine {
 										if (!outFile.renameTo(new File(file))) {
 											result.append("ERROR : target file can not be renamed.");
 										} else {
-											result.append("Successful encoded from "
-													+ encoding
-													+ " to "
-													+ toEncoding);
+											result.append("Successful encoded from ");
+											result.append(encoding);
+											result.append(" to ");
+											result.append(toEncoding);
+											if ("UTF-8".equals(toEncoding)) {
+												if (utf8BOM != null) {
+													result.append(" (");
+													if (utf8BOM) {
+														result.append("with BOM");
+													} else {
+														result.append("without BOM");
+													}
+													result.append(")");
+												}
+											}
 										}
 									} else {
 										result.append("ERROR : source file can not be deleted.");
 									}
 								} else {
-									result.append("Successful encoded from "
-											+ encoding + " to " + toEncoding);
+									result.append("Successful encoded from ");
+									result.append(encoding);
+									result.append(" to ");
+									result.append(toEncoding);
+									if ("UTF-8".equals(toEncoding)) {
+										if (utf8BOM != null) {
+											result.append(" (");
+											if (utf8BOM) {
+												result.append("with BOM");
+											} else {
+												result.append("without BOM");
+											}
+											result.append(")");
+										}
+									}
 								}
 
 							} else {
+
 								result.append("ERROR : this file can not be converted (encoding can not be determined).");
 							}
 						} else {
@@ -402,6 +487,44 @@ public class Engine {
 	}
 
 	/**
+	 * Detect UTF-8 BOM. Reset reader before returning.
+	 * 
+	 * @param in
+	 *            Reader already opened.
+	 * @return True if BOM is present. (open a new reader "in")
+	 * @throws IOException
+	 */
+	private boolean isBOMUTF8Present(BufferedReader in) throws IOException {
+		boolean result = false;
+		if (in != null) {
+			result = false;
+
+			StringBuilder sb = new StringBuilder();
+			char[] cbuf = new char[1];
+			in.read(cbuf, 0, 1);// 1 char
+			sb.append(cbuf);
+			if (UTF8_BOM.equals(sb.toString())) {
+				result = true;
+			}
+			this.firstCharTmp = sb.toString();
+		}
+		return result;
+	}
+
+	/**
+	 * Add BOM.
+	 * 
+	 * @param in
+	 * @throws IOException
+	 */
+	private void addBOM(Writer out) throws IOException {
+		if (out != null) {
+			out.write(UTF8_BOM);
+
+		}
+	}
+
+	/**
 	 * Convert text files recursively to other encoding.
 	 * 
 	 * @param dir
@@ -417,13 +540,15 @@ public class Engine {
 	 *            Output location (optionnal).
 	 * @param inputEncoding
 	 *            Forced input encoding (optional).
+	 * @param bom
+	 *            Add BOM to UTF-8 file output.
 	 * @return Report.
 	 * @throws IOException
 	 *             In case of IO exception.
 	 */
 	public String convertEncodingRecursive(String dir, String subDir,
 			String pattern, String toEncoding, String ouptputLocation,
-			String inputEncoding) throws IOException {
+			String inputEncoding, Boolean bom) throws IOException {
 		StringBuilder result = new StringBuilder();
 		if (dir != null) {
 			// init pattern
@@ -493,7 +618,7 @@ public class Engine {
 											fileTmp.getAbsolutePath(),
 											toEncoding,
 											outputLocationTmpString,
-											inputEncoding);
+											inputEncoding, bom);
 									result.append(fileTmp.getAbsolutePath());
 									result.append(" : ");
 									result.append(reportTmp);
@@ -514,7 +639,7 @@ public class Engine {
 										fileTmp.getAbsolutePath(),
 										newSubDir.toString(), pattern,
 										toEncoding, ouptputLocation,
-										inputEncoding));
+										inputEncoding, bom));
 							}
 						}
 					} else {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Jean-Philippe Serres
+ * Copyright 2012-2013 Jean-Philippe Serres
  * 
  *   This file is part of EncTool.
  *
@@ -22,6 +22,10 @@ package fr.serres.enctool;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Map;
+
+import com.ibm.icu.text.CharsetDetector;
 
 import fr.serres.enctool.enums.CLOptions;
 
@@ -48,6 +52,7 @@ public class Enctool {
 		String targetEncoding = null;
 		String inputEncoding = null;
 		String path = null;
+		Boolean bom = null;
 		boolean allConfidences = false;
 
 		if (args != null && args.length > 0) {
@@ -57,6 +62,8 @@ public class Enctool {
 			boolean currentOptionIsPatternFilename = false;
 			boolean currentOptionIsConvert = false;
 			boolean currentOptionIsForceInputEncoding = false;
+			boolean currentOptionIsWithBOM = false;
+			boolean currentOptionIsWithoutBOM = false;
 
 			for (int i = 0; i < args.length; i++) {
 
@@ -139,11 +146,36 @@ public class Enctool {
 							currentOptionIsPatternFilename = true;
 						}
 						break;
+					case ADD_BOM:
+						if (primaryOption == null
+								|| (primaryOption != CLOptions.CONVERT_FILES_DIR && primaryOption != CLOptions.CONVERT_FILE)
+								|| bom != null) {
+							syntaxError = true;
+						} else {
+							bom = true;
+						}
+						break;
+					case NO_BOM:
+						if (primaryOption == null
+								|| (primaryOption != CLOptions.CONVERT_FILES_DIR && primaryOption != CLOptions.CONVERT_FILE)
+								|| bom != null) {
+							syntaxError = true;
+						} else {
+							bom = false;
+						}
+						break;
 					case ALL_CONFIDENCES:
 						if (primaryOption == null) {
 							syntaxError = true;
 						} else {
 							allConfidences = true;
+						}
+						break;
+					case SUPPORTED_ENCODINGS:
+						if (primaryOption != null) {
+							syntaxError = true;
+						} else {
+							primaryOption = CLOptions.SUPPORTED_ENCODINGS;
 						}
 						break;
 					case VERSION:
@@ -193,7 +225,8 @@ public class Enctool {
 
 			}
 
-			if (!commandComplete && primaryOption != CLOptions.VERSION) {
+			if (!commandComplete && primaryOption != CLOptions.VERSION
+					&& primaryOption != CLOptions.SUPPORTED_ENCODINGS) {
 				syntaxError = true;
 			}
 
@@ -210,7 +243,8 @@ public class Enctool {
 		} else {
 			// execute
 			execute(primaryOption, path, differentFrom, ouptputLocation,
-					patternFilename, allConfidences, targetEncoding, inputEncoding);
+					patternFilename, allConfidences, targetEncoding,
+					inputEncoding, bom);
 		}
 	}
 
@@ -310,12 +344,26 @@ public class Enctool {
 		man.append("                 Work only with -c and -cr options.");
 		man.append('\n');
 		man.append('\n');
+		man.append("-bom :           Force adding BOM to output UTF-8 file.").append(
+				'\n');
+		man.append("                 Work only with -c and -cr options.");
+
+		man.append('\n');
+		man.append('\n');
+		man.append("-nobom :         No BOM to output UTF-8 file.")
+				.append('\n');
+		man.append("                 Work only with -c and -cr options.");
+
+		man.append('\n');
+		man.append('\n');
 		man.append("COMMONS OPTIONS :");
 		man.append('\n');
 		man.append("-p <regexp> :    Pattern to filter files names. Must be a regexp.");
 		man.append('\n');
 		man.append('\n');
 		man.append("OTHERS :");
+		man.append('\n');
+		man.append("-se :            Display names of all supported encodings.");
 		man.append('\n');
 		man.append("-v :             Display the version of this EncTool.");
 		man.append('\n');
@@ -333,7 +381,7 @@ public class Enctool {
 		version.append('\n');
 		version.append("Version : 0.3");
 		version.append('\n');
-		version.append("Year : 2012");
+		version.append("Year : 2013");
 		version.append('\n');
 		version.append("Author : Jean-Philippe Serres (enctool@serres.fr)");
 		version.append('\n');
@@ -350,6 +398,47 @@ public class Enctool {
 		StringBuilder error = new StringBuilder("Command line syntax error.");
 		error.append('\n');
 		System.out.println(error.toString());
+	}
+
+	/**
+	 * Display input and output supported encoding.
+	 */
+	private static void showSupportedEncodings() {
+		// ICU encodings
+		String[] icuEncodings = CharsetDetector.getAllDetectableCharsets();
+
+		// JVM encoding
+		Map<String, Charset> JVMEncodings = Charset.availableCharsets();
+
+		StringBuilder inputEncodings = new StringBuilder(
+				"Encodings that can be recognized : ");
+
+		boolean first = true;
+		for (String tmp : icuEncodings) {
+			if (!first) {
+				inputEncodings.append(", ");
+			} else {
+				first = false;
+			}
+			inputEncodings.append(tmp);
+		}
+		inputEncodings.append('\n');
+
+		StringBuilder outputEncodings = new StringBuilder(
+				"Output encodings supported : ");
+		first = true;
+		for (String tmp : JVMEncodings.keySet()) {
+			if (!first) {
+				outputEncodings.append(", ");
+			} else {
+				first = false;
+			}
+			outputEncodings.append(tmp);
+		}
+		outputEncodings.append('\n');
+
+		System.out.println(inputEncodings.toString());
+		System.out.println(outputEncodings.toString());
 	}
 
 	/**
@@ -370,12 +459,14 @@ public class Enctool {
 	 * @param targetEncoding
 	 *            Target encoding (convert function).
 	 * @param inputEncoding
-	 * 			  Forced input encoding.           
+	 *            Forced input encoding.
+	 * @param bom
+	 *            Add BOM to UTF-8 file output.
 	 */
 	private static void execute(CLOptions mod, String path,
 			String differentFrom, String ouptputLocation,
 			String patternFilename, boolean allConfidences,
-			String targetEncoding, String inputEncoding) {
+			String targetEncoding, String inputEncoding, Boolean bom) {
 
 		if (mod != null) {
 			Engine engine = new Engine();
@@ -453,8 +544,9 @@ public class Enctool {
 				break;
 			case CONVERT_FILE:
 				try {
-					System.out.println(engine.convertEncoding(path,
-							targetEncoding, ouptputLocation, inputEncoding));
+					System.out.println(engine
+							.convertEncoding(path, targetEncoding,
+									ouptputLocation, inputEncoding, bom));
 				} catch (FileNotFoundException e) {
 					System.out.println("ERROR => File not found : " + path);
 					if (DEBUG) {
@@ -473,7 +565,7 @@ public class Enctool {
 				try {
 					System.out.println(engine.convertEncodingRecursive(path,
 							null, patternFilename, targetEncoding,
-							ouptputLocation, inputEncoding));
+							ouptputLocation, inputEncoding, bom));
 				} catch (FileNotFoundException e) {
 					System.out
 							.println("ERROR => Directory not found : " + path);
@@ -486,6 +578,10 @@ public class Enctool {
 						e.printStackTrace();
 					}
 				}
+				break;
+
+			case SUPPORTED_ENCODINGS:
+				showSupportedEncodings();
 				break;
 
 			case VERSION:

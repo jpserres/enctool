@@ -1,5 +1,5 @@
 /*
- *   Copyright 2012 Jean-Philippe Serres
+ *   Copyright 2012-2013 Jean-Philippe Serres
  * 
  *   This file is part of EncTool.
  *
@@ -35,9 +35,12 @@ public enum CLOptions {
 	CONVERT_FILE("-c"), //
 	CONVERT_FILES_DIR("-cr"), //
 	FORCE_INPUT_ENCODING("-f"),//
-	CHANGE_OUTPUT_LOCATION("-o"), //
+	CHANGE_OUTPUT_LOCATION("-o"),//
+	ADD_BOM("-bom"),//
+	NO_BOM("-nobom"),//
 	PATTERN_FILENAME("-p"), //
 	ALL_CONFIDENCES("-a"), //
+	SUPPORTED_ENCODINGS("-se"), //
 	VERSION("-v"), //
 	UNDEFINED("");
 
