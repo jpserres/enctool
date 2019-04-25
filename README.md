@@ -1,6 +1,28 @@
 # enctool
 Command line tool to detect and convert files encoding.
 
+## Releases notes
+
+### 0.3
+
+- Add "-se" option to display names of all supported encodings.
+- Add "-bom" option to force adding BOM to output UTF-8 file.
+- Add "-nobom" option to remove BOM to output UTF-8 file.
+
+### 0.2
+
+- Add "-f" option to force input encoding.
+
+### 0.1
+
+- Detect encoding of file or directory (recursive).
+- Convert encoding of file or directory (recursive).
+- Display additional informations : confidence, language.
+- Display files with different encoding from one selected.
+- Filter file names with regular expression.
+
+
+
 ## HOW TO
 Display embedded manual
 java -jar enctool.jar
