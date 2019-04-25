@@ -45,7 +45,7 @@ java -jar enctool.jar -r -p .*\.java myDirectory
 In this example, only *.java files are analyzed.
 The pattern filter must be a regular Expression.
 
-## How to display files that have a different encoding from one selected
+## How to display files with different encoding from one selected
 java -jar enctool.jar -r -d ISO-8859-1 myDirectory
 
 ## How to convert encoding of one file
