@@ -1,5 +1,12 @@
-# enctool
+# Enctool
 Command line tool to detect and convert files encoding.
+
+Command line tool to detect and convert files encoding.
+Works with files or directories.
+Can be used to add or remove UTF-8 BOM.
+Multi-platform.
+
+EncTool requires Java 1.5 or highter.
 
 ## Releases notes
 
